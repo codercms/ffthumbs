@@ -253,13 +253,15 @@ func (g *Generator) Generate(req *GenerateRequest) error {
 		return err
 	}
 
+	start := time.Now()
+
 	if err := cmd.Start(); err != nil {
 		args := slogArgs
 		args = append(args,
 			slog.String("err", err.Error()),
 		)
 
-		slog.LogAttrs(logCtx, slog.LevelError, "ffmpeg start failed", args...)
+		g.logger.LogAttrs(logCtx, slog.LevelError, "ffmpeg start failed", args...)
 
 		return err
 	}
@@ -286,9 +288,15 @@ func (g *Generator) Generate(req *GenerateRequest) error {
 			slog.String("err", err.Error()),
 		)
 
-		slog.LogAttrs(logCtx, slog.LevelError, "ffmpeg run failed", args...)
+		g.logger.LogAttrs(logCtx, slog.LevelError, "ffmpeg run failed", args...)
 
 		return err
+	}
+
+	{
+		args := slogArgs
+		args = append(args, slog.Duration("duration", time.Since(start)))
+		g.logger.LogAttrs(logCtx, slog.LevelInfo, "ffmpeg command finished", args...)
 	}
 
 	return nil
@@ -326,7 +334,7 @@ func (g *Generator) listenForProgressLogs(stdout io.Reader, slogArgs []slog.Attr
 				slog.String("speed", speed),
 			)
 
-			slog.LogAttrs(context.Background(), slog.LevelInfo, "Progress update", args...)
+			g.logger.LogAttrs(context.Background(), slog.LevelInfo, "Progress update", args...)
 		}
 	}
 }
