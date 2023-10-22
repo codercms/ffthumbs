@@ -60,7 +60,7 @@ type (
 		// DoneChan channel to receive request processing result
 		DoneChan chan *GenerateResult
 
-		// LogArgs is an additional log args that will be appended to logs
+		// LogArgs is an additional log launchParams that will be appended to logs
 		LogArgs []slog.Attr
 	}
 

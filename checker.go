@@ -55,6 +55,17 @@ func FindFfmpeg() (string, error) {
 	return ffmpegPath, nil
 }
 
+// FindProbe finds path to ffprobe in OS $PATH path variable
+func FindProbe() (string, error) {
+	// Find full path to the "ffprobe" executable
+	ffmpegPath, err := exec.LookPath("ffprobe")
+	if err != nil {
+		return "", fmt.Errorf("cannot find ffmpeg binary in OS $PATH variable: %w", err)
+	}
+
+	return ffmpegPath, nil
+}
+
 func getVerifiedFfmpegPath(ffmpegPath string) (string, error) {
 	if len(ffmpegPath) == 0 {
 		realPath, err := FindFfmpeg()
@@ -68,6 +79,23 @@ func getVerifiedFfmpegPath(ffmpegPath string) (string, error) {
 	if err := VerifyFfmpegVersion(ffmpegPath); err != nil {
 		return "", err
 	}
+
+	return ffmpegPath, nil
+}
+
+func getVerifiedFfprobePath(ffmpegPath string) (string, error) {
+	if len(ffmpegPath) == 0 {
+		realPath, err := FindProbe()
+		if err != nil {
+			return "", err
+		}
+
+		ffmpegPath = realPath
+	}
+
+	//if err := VerifyFfmpegVersion(ffmpegPath); err != nil {
+	//	return "", err
+	//}
 
 	return ffmpegPath, nil
 }
