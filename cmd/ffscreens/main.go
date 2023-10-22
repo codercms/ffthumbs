@@ -7,6 +7,8 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -16,6 +18,8 @@ var (
 	scaleBehavior ffthumbs.ScaleBehavior
 	dst           string
 	input         string
+	points        string
+	thumbsNo      int
 )
 
 func init() {
@@ -38,6 +42,9 @@ func init() {
 	)
 
 	flag.StringVar(&dst, "dst", "screens/%04d.jpg", "Set output destination path")
+
+	flag.StringVar(&points, "points", "", "Set time points delimited by comma")
+	flag.IntVar(&thumbsNo, "thumbsNo", 20, "Set thumbnails count")
 }
 
 func main() {
@@ -59,6 +66,30 @@ func main() {
 		log.Fatal(err)
 	}
 
+	var timeUnits []ffthumbs.TimeUnit
+
+	if len(points) > 0 {
+		parts := strings.Split(points, ",")
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			pathWithoutPerc := strings.TrimSuffix(part, "%")
+
+			val, err := strconv.ParseFloat(pathWithoutPerc, 64)
+			if err != nil {
+				log.Fatalf("Wrong point val %q: %v", part, err)
+				return
+			}
+
+			timeUnit := ffthumbs.TimeUnit{Value: val}
+
+			if len(part) != len(pathWithoutPerc) {
+				timeUnit.Type = ffthumbs.TimeUnitTypePercent
+			}
+
+			timeUnits = append(timeUnits, timeUnit)
+		}
+	}
+
 	req := &ffthumbs.ScreenshotsRequest{
 		MediaURL: input,
 		Scale: &ffthumbs.ScaleConfig{
@@ -66,7 +97,8 @@ func main() {
 			Height:   height,
 			Behavior: scaleBehavior,
 		},
-		ThumbsNo:  20,
+		ThumbsNo:  thumbsNo,
+		TimeUnits: timeUnits,
 		OutputDst: dst,
 	}
 

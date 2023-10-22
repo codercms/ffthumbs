@@ -13,6 +13,13 @@ import (
 	"sync/atomic"
 )
 
+type TimeUnitType int
+
+const (
+	TimeUnitTypePoint TimeUnitType = iota
+	TimeUnitTypePercent
+)
+
 type (
 	ScreensConfig struct {
 		// FfmpegPath path to ffmpeg binary, default: search binary in OS $PATH variable
@@ -43,6 +50,12 @@ type (
 		lastReqId atomic.Uint64
 	}
 
+	TimeUnit struct {
+		Type TimeUnitType
+		// Value time point in seconds or percent of media duration
+		Value float64
+	}
+
 	ScreenshotsRequest struct {
 		// MediaURL is a path to media file
 		MediaURL string
@@ -51,6 +64,9 @@ type (
 
 		// ThumbsNo is total count of screenshots
 		ThumbsNo int
+
+		// TimeUnits make screenshots by provided time uints instead of ThumbsNo
+		TimeUnits []TimeUnit
 
 		OutputDst string
 
@@ -157,6 +173,52 @@ func (g *ScreenGenerator) Generate(req *ScreenshotsRequest) error {
 	outputDst := "image_%d.jpg"
 	if len(req.OutputDst) > 0 {
 		outputDst = req.OutputDst
+	}
+
+	if len(req.TimeUnits) > 0 {
+		var timePoint float64
+
+		for i, timeUnit := range req.TimeUnits {
+			if timeUnit.Type == TimeUnitTypePercent {
+				timePoint = (duration / 100) * timeUnit.Value
+			} else {
+				timePoint = timeUnit.Value
+			}
+
+			outputFilename := fmt.Sprintf(outputDst, i)
+
+			{
+				args := slogArgs
+				args = append(args,
+					slog.Float64("time", timePoint),
+					slog.String("dst", outputFilename),
+				)
+				g.logger.LogAttrs(logCtx, slog.LevelDebug, "Generating thumb", args...)
+			}
+
+			cmdArgs := []string{
+				"-loglevel", "error",
+				"-ss", fmt.Sprintf("%f", timePoint),
+				"-i", req.MediaURL,
+				"-vf", filtersStr,
+				"-vframes", "1",
+				outputFilename,
+			}
+
+			_, err := launchCommand(launchParams{
+				ctx:        req.Context,
+				path:       g.ffmpegPath,
+				args:       cmdArgs,
+				needStdout: false,
+				logger:     g.logger,
+				LogArgs:    req.LogArgs,
+			})
+			if err != nil {
+				return err
+			}
+		}
+
+		return nil
 	}
 
 	for i := 1; i <= req.ThumbsNo; i++ {
